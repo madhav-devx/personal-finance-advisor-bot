@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import month_picker, insight, progress_bar %}
+{% block title %}AI advisor · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>AI financial advisor</h1>
+    <span class="badge text-bg-{{ 'info' if ai_on else 'success' }}">{{ 'External AI enabled (with built-in fallback)' if ai_on else 'Built-in advisor – works without an API key' }}</span></div>
+  {{ month_picker(year, month) }}
+</div>
+<div class="alert alert-secondary small" role="note"><i class="bi bi-info-circle"></i> {{ DISCLAIMER }}</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-4"><div class="card h-100"><div class="card-body text-center">
+    <h2 class="card-title text-start">Financial health · {{ snap.label }}</h2>
+    {% if health.score is not none %}
+      {% set color = '#059669' if health.score >= 60 else '#d97706' if health.score >= 40 else '#dc2626' %}
+      <div class="score-ring my-3" style="--p: {{ health.score }}; --ring: {{ color }}"><div><span><strong>{{ health.score }}</strong><small class="text-muted">/ 100</small><br><span class="small fw-semibold">{{ health.label }}</span></span></div></div>
+      <ul class="list-unstyled small text-start mb-0">{% for c in health.components %}<li class="d-flex justify-content-between"><span>{{ c.name }}</span><span>{{ c.points }}/{{ c.max }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="text-muted my-5">Add income and expenses to see your score.</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-8"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Monthly summary</h2>
+    <p>{{ summary.text }}</p>
+    <h3 class="h6 mt-3">Alerts & insights</h3>
+    {% for item in insights %}{{ insight(item) }}{% endfor %}
+  </div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Saving suggestions</h2>
+    <ul class="mb-3">{% for t in saving_tips %}<li class="mb-1">{{ t }}</li>{% endfor %}</ul>
+    <h3 class="h6">Expense-reduction strategies</h3>
+    {% for s in strategies %}
+      <div class="mb-2"><strong>{{ s.label }}</strong> <span class="text-muted small">({{ s.amount|money(0) }}{% if s.potential %} · could free ~{{ s.potential|money(0) }}/month{% endif %})</span>
+        <ul class="small mb-0">{% for tip in s.tips %}<li>{{ tip }}</li>{% endfor %}</ul></div>
+    {% else %}<p class="small text-muted">No spending recorded yet.</p>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Emergency fund guidance</h2>
+    {% if emergency %}
+      <p class="small">Essential spending is about <strong>{{ emergency.monthly_essential|money(0) }}</strong>/month. A {{ emergency.months_target }}-month cushion is <strong>{{ emergency.target|money(0) }}</strong>.</p>
+      {{ progress_bar((emergency.current / emergency.target * 100)|float if emergency.target else 0, 'ok', 'Emergency fund progress') }}
+      <p class="small mt-2 mb-1">Set aside: {{ emergency.current|money(0) }} ({{ '%.1f'|format(emergency.months_covered) }} months covered)</p>
+      {% if emergency.gap > 0 %}
+        <p class="small mb-0">{% if emergency.monthly_contribution > 0 %}Putting about {{ emergency.monthly_contribution|money(0) }}/month towards it would take roughly {{ emergency.months_to_goal }} months.{% else %}Your current surplus is small - free up budget first, then start with a small regular amount.{% endif %}</p>
+      {% else %}<p class="small text-success mb-0">You have reached your target.</p>{% endif %}
+      <p class="small text-muted mt-2 mb-0">Tip: mark a goal as "emergency fund" in Savings goals so it is counted here.</p>
+    {% else %}<p class="text-muted small">Record some expenses to estimate an emergency-fund target.</p>{% endif %}
+  </div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="card-title">Recommended budget for next month</h2>
+  {% if plan.possible %}
+    <div class="row"><div class="col-md-6"><ul class="list-unstyled small">
+      {% for cat, amt in plan.categories.items() %}<li class="d-flex justify-content-between border-bottom py-1"><span>{{ cat|catlabel }}</span><strong>{{ amt|money(0) }}</strong></li>{% endfor %}
+      <li class="d-flex justify-content-between pt-2"><span>Planned spending</span><strong>{{ plan.total|money(0) }}</strong></li>
+      <li class="d-flex justify-content-between"><span>Savings target</span><strong class="text-success">{{ plan.savings_target|money(0) }}</strong></li></ul></div>
+      <div class="col-md-6">{% for n in plan.notes %}<p class="small text-muted">• {{ n }}</p>{% endfor %}
+        <a class="btn btn-sm btn-outline-success" href="{{ url_for('budgets.index', year=year, month=month) }}">Go to budgets</a></div></div>
+  {% else %}<p class="text-muted small mb-0">{{ plan.notes[0] }}</p>{% endif %}
+</div></div>
+
+<div class="card"><div class="card-body">
+  <h2 class="card-title"><i class="bi bi-chat-dots text-success"></i> Ask the advisor</h2>
+  <div class="chat-log mb-3" id="chat-log" aria-live="polite">
+    <div class="chat-msg chat-bot">Hi {{ current_user.name.split(' ')[0] }}! Ask me about your spending, savings, budget, goals or emergency fund for {{ snap.label }}.</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {% for q in ['Where am I overspending?', 'How can I save more?', 'Plan my budget for next month', 'How is my emergency fund?', 'How are my goals doing?'] %}
+      <button type="button" class="btn btn-sm btn-outline-success" data-question="{{ q }}">{{ q }}</button>{% endfor %}
+  </div>
+  <form id="chat-form" class="d-flex gap-2" data-url="{{ url_for('advisor.chat') }}" data-year="{{ year }}" data-month="{{ month }}">
+    <label for="chat-input" class="visually-hidden">Your question</label>
+    <input id="chat-input" class="form-control" maxlength="500" autocomplete="off" placeholder="e.g. How much can I cut from food?">
+    <button id="chat-send" class="btn btn-success" type="submit"><i class="bi bi-send"></i><span class="visually-hidden">Send</span></button>
+  </form>
+</div></div>
+{% endblock %}

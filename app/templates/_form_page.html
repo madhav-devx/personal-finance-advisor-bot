@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}{{ title }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6 col-xl-5">
+    <div class="card form-card">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-4"><i class="bi {{ icon }} text-success me-2" aria-hidden="true"></i>{{ title }}</h1>
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          {% for field in form if field.widget.input_type != 'hidden' %}
+            {{ render_field(field) }}
+          {% endfor %}
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-success">{{ submit_label }}</button>
+            <a class="btn btn-outline-secondary" href="{{ cancel_url }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

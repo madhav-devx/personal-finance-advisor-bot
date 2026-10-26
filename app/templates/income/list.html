@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stat_card, empty_state, render_pagination, delete_button %}
+{% block title %}Income · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Income</h1><a class="btn btn-success" href="{{ url_for('income.new') }}"><i class="bi bi-plus-lg"></i> Add income</a></div>
+
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-lg-3">{{ stat_card('Total' ~ (' (filtered)' if filtered else ''), total|money, 'bi-cash-stack', 'positive') }}</div>
+  <div class="col-sm-6 col-lg-3">{{ stat_card('Records', count, 'bi-list-check', 'info') }}</div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body py-2">
+    <div class="small text-muted mb-1">By source</div>
+    {% for s, amt in by_source.items() %}<span class="badge text-bg-light me-1 mb-1">{{ s|srclabel }}: {{ amt|money(0) }}</span>{% else %}<span class="text-muted small">—</span>{% endfor %}
+  </div></div></div>
+</div>
+
+<form method="get" class="card card-body mb-3"><div class="row g-2 align-items-end">
+  <div class="col-md-3"><label class="form-label small" for="f-start">From</label><input id="f-start" type="date" name="start" class="form-control form-control-sm" value="{{ filters.start or '' }}"></div>
+  <div class="col-md-3"><label class="form-label small" for="f-end">To</label><input id="f-end" type="date" name="end" class="form-control form-control-sm" value="{{ filters.end or '' }}"></div>
+  <div class="col-md-2"><label class="form-label small" for="f-source">Source</label>
+    <select id="f-source" name="source" class="form-select form-select-sm"><option value="">All</option>
+      {% for v, l in sources %}<option value="{{ v }}" {{ 'selected' if filters.source == v }}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><label class="form-label small" for="f-q">Search</label><input id="f-q" type="search" name="q" class="form-control form-control-sm" value="{{ filters.q }}" placeholder="Client or note"></div>
+  <div class="col-md-2 d-flex gap-2"><button class="btn btn-sm btn-success flex-fill" type="submit">Filter</button><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('income.index') }}">Reset</a></div>
+</div></form>
+
+<div class="card"><div class="card-body">
+{% if pagination.items %}
+  <div class="table-responsive"><table class="table mb-3">
+    <thead><tr><th scope="col">Date</th><th scope="col">Source</th><th scope="col">Client</th><th scope="col">Description</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end">Actions</th></tr></thead>
+    <tbody>{% for r in pagination.items %}
+      <tr><td>{{ r.date.strftime('%d %b %Y') }}</td><td>{{ r.source|srclabel }}</td><td>{{ r.client or '—' }}</td>
+        <td class="text-muted">{{ r.description or '—' }}{% if r.is_demo %} <span class="badge badge-demo">Demo</span>{% endif %}</td>
+        <td class="text-end amount-in">{{ r.amount|money }}</td>
+        <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('income.edit', income_id=r.id) }}" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+          {{ delete_button(url_for('income.delete', income_id=r.id), 'Delete this income record?') }}</td></tr>
+    {% endfor %}</tbody></table></div>
+  {{ render_pagination(pagination, 'income.index', args) }}
+{% elif filtered %}
+  {% call empty_state('bi-search', 'No matching income', 'Try changing or resetting the filters.') %}{% endcall %}
+{% else %}
+  {% call empty_state('bi-cash-coin', 'No income recorded yet', 'Record your salary, allowance or client payments to start tracking.') %}
+    <a class="btn btn-success" href="{{ url_for('income.new') }}">Add your first income</a>{% endcall %}
+{% endif %}
+</div></div>
+{% endblock %}

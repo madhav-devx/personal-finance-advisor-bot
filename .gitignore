@@ -1,0 +1,14 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+instance/*
+!instance/.gitkeep
+*.db
+*.sqlite3
+.DS_Store
+.vscode/
+.idea/
+app/advisor/routes_backup.py

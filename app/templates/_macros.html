@@ -1,0 +1,84 @@
+{% macro render_field(field, help=None) %}
+<div class="mb-3">
+  {% if field.type == 'BooleanField' %}
+    <div class="form-check">
+      {{ field(class_="form-check-input" ~ (" is-invalid" if field.errors else "")) }}
+      {{ field.label(class_="form-check-label") }}
+    </div>
+  {% else %}
+    {{ field.label(class_="form-label") }}
+    {% if field.type == 'SelectField' %}
+      {{ field(class_="form-select" ~ (" is-invalid" if field.errors else "")) }}
+    {% else %}
+      {{ field(class_="form-control" ~ (" is-invalid" if field.errors else "")) }}
+    {% endif %}
+  {% endif %}
+  {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+  {% if help %}<div class="form-text">{{ help }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro month_picker(year, month) %}
+<form method="get" class="month-picker d-flex gap-2 align-items-center" aria-label="Choose month">
+  <label for="mp-month" class="visually-hidden">Month</label>
+  <select id="mp-month" name="month" class="form-select form-select-sm" data-autosubmit>
+    {% for value, name in month_choices %}<option value="{{ value }}" {{ 'selected' if value == month }}>{{ name }}</option>{% endfor %}
+  </select>
+  <label for="mp-year" class="visually-hidden">Year</label>
+  <select id="mp-year" name="year" class="form-select form-select-sm" data-autosubmit>
+    {% for y in year_choices() %}<option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>{% endfor %}
+  </select>
+  <noscript><button class="btn btn-sm btn-success" type="submit">Go</button></noscript>
+</form>
+{% endmacro %}
+
+{% macro stat_card(label, value, icon, tone='neutral', sub=None) %}
+<div class="stat-card stat-{{ tone }}">
+  <div class="stat-icon"><i class="bi {{ icon }}" aria-hidden="true"></i></div>
+  <div>
+    <div class="stat-label">{{ label }}</div>
+    <div class="stat-value">{{ value }}</div>
+    {% if sub %}<div class="stat-sub">{{ sub }}</div>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro progress_bar(percent, level='ok', label='') %}
+{% set p = percent if percent is not none else 0 %}
+<div class="progress" role="progressbar" aria-label="{{ label or 'Progress' }}" aria-valuenow="{{ p|round|int }}" aria-valuemin="0" aria-valuemax="100">
+  <div class="progress-bar bg-{{ {'ok':'success','warn':'warning','over':'danger','none':'secondary'}.get(level,'success') }}" style="width: {{ [p, 100]|min }}%"></div>
+</div>
+{% endmacro %}
+
+{% macro empty_state(icon, title, text) %}
+<div class="empty-state text-center">
+  <i class="bi {{ icon }}" aria-hidden="true"></i>
+  <h2 class="h5 mt-3">{{ title }}</h2>
+  <p class="text-muted mb-3">{{ text }}</p>
+  {{ caller() if caller }}
+</div>
+{% endmacro %}
+
+{% macro insight(item) %}
+<div class="insight insight-{{ item.level }}">
+  <i class="bi {{ {'danger':'bi-exclamation-octagon-fill','warning':'bi-exclamation-triangle-fill','info':'bi-info-circle-fill','success':'bi-check-circle-fill'}.get(item.level) }}" aria-hidden="true"></i>
+  <div><div class="fw-semibold">{{ item.title }}</div><div class="small">{{ item.message }}</div></div>
+</div>
+{% endmacro %}
+
+{% macro render_pagination(pager, endpoint, args) %}
+{% if pager.pages > 1 %}
+<nav aria-label="Pages"><ul class="pagination pagination-sm justify-content-center mb-0">
+  <li class="page-item {{ 'disabled' if not pager.has_prev }}"><a class="page-link" href="{{ url_for(endpoint, page=pager.prev_num, **args) if pager.has_prev else '#' }}">Previous</a></li>
+  <li class="page-item disabled"><span class="page-link">Page {{ pager.page }} of {{ pager.pages }}</span></li>
+  <li class="page-item {{ 'disabled' if not pager.has_next }}"><a class="page-link" href="{{ url_for(endpoint, page=pager.next_num, **args) if pager.has_next else '#' }}">Next</a></li>
+</ul></nav>
+{% endif %}
+{% endmacro %}
+
+{% macro delete_button(action, confirm_text='Delete this item?') %}
+<form method="post" action="{{ action }}" class="d-inline" data-confirm="{{ confirm_text }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete"><i class="bi bi-trash"></i></button>
+</form>
+{% endmacro %}

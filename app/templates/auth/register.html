@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Create account · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="card form-card"><div class="card-body p-4">
+    <h1 class="h4 mb-1">Create your account</h1>
+    <p class="text-muted small mb-4">Free and private. No bank details required.</p>
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      {{ render_field(form.name) }}
+      {{ render_field(form.email) }}
+      {{ render_field(form.profile_type, help="Used to tailor budgets and advice. You can change it later.") }}
+      {{ render_field(form.password, help="At least 8 characters with a letter and a number.") }}
+      {{ render_field(form.confirm) }}
+      <button class="btn btn-success w-100" type="submit">Create account</button>
+    </form>
+    <p class="text-center small mt-3 mb-0">Already registered? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+  </div></div>
+</div>
+{% endblock %}

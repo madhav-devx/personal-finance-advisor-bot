@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stat_card, empty_state, render_pagination, delete_button %}
+{% block title %}Expenses · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Expenses</h1><a class="btn btn-success" href="{{ url_for('expenses.new') }}"><i class="bi bi-plus-lg"></i> Add expense</a></div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">{{ stat_card('Today', summary.today|money(0), 'bi-sun', 'info') }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('This week', summary.week|money(0), 'bi-calendar-week', 'info', 'Last week: ' ~ (summary.last_week|money(0))) }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('This month', summary.month|money(0), 'bi-calendar-month', 'negative', 'Daily avg: ' ~ (summary.daily_avg|money(0))) }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Matching filters', total|money(0), 'bi-funnel', 'neutral', count ~ ' records') }}</div>
+</div>
+
+<div class="card mb-3"><div class="card-body py-3">
+  <div class="small text-muted mb-2">Last 7 days</div>
+  <div class="row g-2">{% for d in summary.last7 %}
+    <div class="col"><div class="small text-center">{{ d.date.strftime('%a') }}</div>
+      <div class="progress my-1" role="progressbar" aria-label="{{ d.date.strftime('%A') }}" aria-valuenow="{{ d.pct|round|int }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-danger" style="width: {{ d.pct }}%"></div></div>
+      <div class="small text-center text-muted">{{ d.total|money(0) }}</div></div>{% endfor %}</div>
+</div></div>
+
+<form method="get" class="card card-body mb-3"><div class="row g-2 align-items-end">
+  <div class="col-md-3"><label class="form-label small" for="f-q">Search</label><input id="f-q" type="search" name="q" class="form-control form-control-sm" value="{{ filters.q }}" placeholder="Search descriptions"></div>
+  <div class="col-md-2"><label class="form-label small" for="f-cat">Category</label>
+    <select id="f-cat" name="category" class="form-select form-select-sm"><option value="">All</option>
+      {% for v, l in categories %}<option value="{{ v }}" {{ 'selected' if filters.category == v }}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><label class="form-label small" for="f-pay">Payment</label>
+    <select id="f-pay" name="payment" class="form-select form-select-sm"><option value="">All</option>
+      {% for v, l in payments %}<option value="{{ v }}" {{ 'selected' if filters.payment == v }}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><label class="form-label small" for="f-month">Month</label>
+    <div class="input-group input-group-sm">
+      <select id="f-month" name="month" class="form-select"><option value="">Any</option>
+        {% for v, n in month_choices %}<option value="{{ v }}" {{ 'selected' if filters.month == v|string }}>{{ n }}</option>{% endfor %}</select>
+      <select name="year" class="form-select" aria-label="Year"><option value="">Year</option>
+        {% for y in year_choices() %}<option value="{{ y }}" {{ 'selected' if filters.year == y|string }}>{{ y }}</option>{% endfor %}</select></div></div>
+  <div class="col-md-2 d-flex gap-2"><button class="btn btn-sm btn-success flex-fill" type="submit">Filter</button><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('expenses.index') }}">Reset</a></div>
+  <div class="col-md-3"><label class="form-label small" for="f-start">From</label><input id="f-start" type="date" name="start" class="form-control form-control-sm" value="{{ filters.start or '' }}"></div>
+  <div class="col-md-3"><label class="form-label small" for="f-end">To</label><input id="f-end" type="date" name="end" class="form-control form-control-sm" value="{{ filters.end or '' }}"></div>
+</div></form>
+
+<div class="card"><div class="card-body">
+{% if pagination.items %}
+  <div class="table-responsive"><table class="table mb-3">
+    <thead><tr><th scope="col">Date</th><th scope="col">Category</th><th scope="col">Payment</th><th scope="col">Description</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end">Actions</th></tr></thead>
+    <tbody>{% for r in pagination.items %}
+      <tr><td>{{ r.date.strftime('%d %b %Y') }}</td><td>{{ r.category|catlabel }}</td><td>{{ r.payment_method|paylabel }}</td>
+        <td class="text-muted">{{ r.description or '—' }}{% if r.is_demo %} <span class="badge badge-demo">Demo</span>{% endif %}</td>
+        <td class="text-end amount-out">{{ r.amount|money }}</td>
+        <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('expenses.edit', expense_id=r.id) }}" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+          {{ delete_button(url_for('expenses.delete', expense_id=r.id), 'Delete this expense?') }}</td></tr>
+    {% endfor %}</tbody></table></div>
+  {{ render_pagination(pagination, 'expenses.index', args) }}
+{% elif filtered %}
+  {% call empty_state('bi-search', 'No matching expenses', 'Try changing or resetting the filters.') %}{% endcall %}
+{% else %}
+  {% call empty_state('bi-receipt', 'No expenses recorded yet', 'Add what you spend to see summaries, budgets and advice.') %}
+    <a class="btn btn-success" href="{{ url_for('expenses.new') }}">Add your first expense</a>{% endcall %}
+{% endif %}
+</div></div>
+{% endblock %}

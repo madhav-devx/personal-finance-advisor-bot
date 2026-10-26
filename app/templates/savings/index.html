@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stat_card, progress_bar, empty_state %}
+{% block title %}Savings goals · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Savings goals</h1><a class="btn btn-success" href="{{ url_for('savings.new') }}"><i class="bi bi-plus-lg"></i> New goal</a></div>
+{% if items %}
+<div class="row g-3 mb-3">
+  <div class="col-md-6">{{ stat_card('Total saved', total_saved|money(0), 'bi-piggy-bank', 'positive') }}</div>
+  <div class="col-md-6">{{ stat_card('Total targets', total_target|money(0), 'bi-flag', 'info') }}</div>
+</div>
+<div class="row g-3">
+  {% for it in items %}{% set g = it.goal %}{% set p = it.progress %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-start">
+      <h2 class="h6 mb-1"><a class="text-decoration-none text-dark" href="{{ url_for('savings.detail', goal_id=g.id) }}">{{ g.name }}</a></h2>
+      <span class="badge text-bg-{{ {'achieved':'success','on_track':'success','behind':'warning','overdue':'danger','not_started':'secondary'}[p.status] }}">{{ p.status|replace('_',' ')|title }}</span>
+    </div>
+    {% if g.is_emergency %}<span class="badge text-bg-info mb-2">Emergency fund</span>{% endif %}{% if g.is_demo %}<span class="badge badge-demo mb-2">Demo</span>{% endif %}
+    <div class="d-flex justify-content-between small mt-2"><span>{{ p.saved|money(0) }}</span><span class="text-muted">of {{ g.target_amount|money(0) }}</span></div>
+    {{ progress_bar(p.percent, 'ok', g.name ~ ' progress') }}
+    <div class="small text-muted mt-2">{{ p.percent|pct(0) }} complete · target {{ g.target_date.strftime('%d %b %Y') }}</div>
+    {% if p.status not in ('achieved',) %}<div class="small mt-1">Needs about <strong>{{ p.required_monthly|money(0) }}</strong>/month</div>{% endif %}
+    <a class="btn btn-sm btn-outline-success mt-3" href="{{ url_for('savings.detail', goal_id=g.id) }}">Add contribution</a>
+  </div></div></div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="card-body">
+  {% call empty_state('bi-piggy-bank', 'No savings goals yet', 'Create a goal such as an emergency fund, a laptop, tuition fees or a trip.') %}
+    <a class="btn btn-success" href="{{ url_for('savings.new') }}">Create your first goal</a>{% endcall %}
+</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import month_picker, stat_card, progress_bar, insight %}
+{% block title %}Reports · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Monthly report</h1>
+  <div class="d-flex flex-wrap gap-2 align-items-center no-print">
+    {{ month_picker(year, month) }}
+    <a class="btn btn-sm btn-outline-success" href="{{ url_for('reports.export_csv', scope='month', year=year, month=month) }}"><i class="bi bi-filetype-csv"></i> CSV (month)</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('reports.export_csv') }}"><i class="bi bi-download"></i> CSV (all)</a>
+    <a class="btn btn-sm btn-success" href="{{ url_for('reports.export_pdf', year=year, month=month) }}"><i class="bi bi-filetype-pdf"></i> PDF</a>
+  </div>
+</div>
+<p class="text-muted">{{ extras.summary.text }}</p>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">{{ stat_card('Total income', snap.income_total|money, 'bi-arrow-down-circle', 'positive') }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Total expenses', snap.expense_total|money, 'bi-arrow-up-circle', 'negative') }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Net savings', snap.balance|money, 'bi-wallet2', 'positive' if snap.balance >= 0 else 'negative', 'Remaining balance') }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Savings rate', snap.savings_rate|pct(1), 'bi-percent', 'info') }}</div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Spending by category</h2>
+    {% if snap.category_totals %}
+      <div class="chart-box small mb-3"><canvas id="categoryChart" role="img" aria-label="Spending by category"></canvas></div>
+      <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th scope="col">Category</th><th scope="col" class="text-end">Spent</th><th scope="col" class="text-end">Share</th></tr></thead><tbody>
+      {% for cat, amt in snap.category_totals.items() %}<tr><td>{{ cat|catlabel }}</td><td class="text-end">{{ amt|money }}</td><td class="text-end">{{ ((amt / snap.expense_total * 100)|float)|pct(0) }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="text-muted my-4 text-center">No expenses for this month.</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Income vs expenses trend</h2>
+    <div class="chart-box small"><canvas id="incomeExpenseChart" role="img" aria-label="Income versus expenses by month"></canvas></div>
+    <h3 class="h6 mt-3">Highest-spending categories</h3>
+    {% for cat, amt, share in extras.top_categories %}<div class="d-flex justify-content-between small border-bottom py-1"><span>{{ loop.index }}. {{ cat|catlabel }}</span><span>{{ amt|money(0) }} · {{ share|pct(0) }}</span></div>
+    {% else %}<p class="small text-muted">None yet.</p>{% endfor %}
+  </div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="card-title">Budget vs actual</h2>
+  {% set rows = extras.budget_rows|selectattr('limit')|list %}
+  {% if rows %}
+  <div class="table-responsive"><table class="table align-middle mb-3"><thead><tr><th scope="col">Category</th><th scope="col" class="text-end">Budget</th><th scope="col" class="text-end">Actual</th><th scope="col" class="text-end">Difference</th><th scope="col" style="width:25%">Used</th></tr></thead><tbody>
+  {% for r in rows %}<tr><td>{{ r.label }}</td><td class="text-end">{{ r.limit|money(0) }}</td><td class="text-end">{{ r.spent|money(0) }}</td>
+    <td class="text-end {{ 'amount-out' if r.level == 'over' else 'amount-in' }}">{{ r.remaining|money(0) }}</td><td>{{ progress_bar(r.percent, r.level, r.label ~ ' budget usage') }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="chart-box small"><canvas id="budgetChart" role="img" aria-label="Budget versus actual"></canvas></div>
+  {% else %}<p class="text-muted mb-0">No budgets were set for this month. <a href="{{ url_for('budgets.index', year=year, month=month) }}">Set budgets</a></p>{% endif %}
+</div></div>
+
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Compared with previous month</h2>
+    {% if extras.comparison %}{% set c = extras.comparison %}
+    <table class="table table-sm mb-0"><thead><tr><th scope="col">Measure</th><th scope="col" class="text-end">Previous</th><th scope="col" class="text-end">Change</th></tr></thead><tbody>
+      <tr><td>Income</td><td class="text-end">{{ c.prev_income|money(0) }}</td><td class="text-end">{{ c.income_change|money(0) }}</td></tr>
+      <tr><td>Expenses</td><td class="text-end">{{ c.prev_expense|money(0) }}</td><td class="text-end">{{ c.expense_change|money(0) }}</td></tr>
+      <tr><td>Balance</td><td class="text-end">{{ c.prev_balance|money(0) }}</td><td class="text-end">{{ c.balance_change|money(0) }}</td></tr></tbody></table>
+    {% else %}<p class="text-muted mb-0">No data for the previous month yet.</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Financial observations</h2>
+    {% for item in extras.observations %}{{ insight(item) }}{% else %}<p class="text-muted">No observations yet.</p>{% endfor %}
+  </div></div></div>
+</div>
+<script id="chart-data" type="application/json">{{ chart_data|tojson }}</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Profile & settings · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Profile & settings</h1></div>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="card-title">Profile</h2>
+      <p class="text-muted small">Email: {{ current_user.email }}</p>
+      <form method="post" novalidate>{{ form.hidden_tag() }}
+        {{ render_field(form.name) }}
+        {{ render_field(form.profile_type, help="Tailors budget suggestions and advice to your situation.") }}
+        {{ render_field(form.currency) }}
+        {{ render_field(form.ai_consent, help=("An AI API key is configured on the server." if ai_available else "No AI API key is configured, so the built-in advisor is always used.")) }}
+        <button class="btn btn-success" type="submit">Save profile</button>
+      </form>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <h2 class="card-title">Change password</h2>
+      <form method="post" action="{{ url_for('main.change_password') }}" novalidate>{{ password_form.hidden_tag() }}
+        {{ render_field(password_form.current_password) }}{{ render_field(password_form.new_password) }}{{ render_field(password_form.confirm) }}
+        <button class="btn btn-outline-success" type="submit">Update password</button></form>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card mb-3" id="demo"><div class="card-body">
+      <h2 class="card-title">Demo data</h2>
+      <p class="small text-muted">Adds three months of sample records so you can try the app. Everything is labelled <span class="badge badge-demo">Demo</span>, existing records are never changed, and you can remove it any time.</p>
+      {% if has_demo %}
+        <form method="post" action="{{ url_for('main.remove_demo') }}" data-confirm="Remove all demo data? Your own records will be kept.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-danger" type="submit">Remove demo data</button></form>
+      {% else %}
+        <form method="post" action="{{ url_for('main.load_demo') }}">{{ demo_form.hidden_tag() }}{{ render_field(demo_form.scenario) }}
+          <button class="btn btn-outline-success" type="submit">Load demo data</button></form>
+      {% endif %}
+    </div></div>
+    <div class="card border-danger-subtle"><div class="card-body">
+      <h2 class="card-title text-danger">Delete account</h2>
+      <p class="small text-muted">Permanently deletes your account and all of your income, expenses, budgets and goals. This cannot be undone.</p>
+      <form method="post" action="{{ url_for('main.delete_account') }}" data-confirm="Permanently delete your account and all data?">{{ delete_form.hidden_tag() }}
+        {{ render_field(delete_form.password) }}<button class="btn btn-danger" type="submit">Delete my account</button></form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import month_picker, stat_card, progress_bar, empty_state, insight %}
+{% block title %}Dashboard · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Hello, {{ current_user.name.split(' ')[0] }}</h1><div class="text-muted">Financial overview for {{ snap.label }}</div></div>
+  {{ month_picker(year, month) }}
+</div>
+
+{% if not has_data %}
+<div class="card mb-4"><div class="card-body">
+  {% call empty_state('bi-wallet2', 'No financial data yet', 'Add your first income and expense, or load clearly-labelled demo data to explore the app.') %}
+    <div class="d-flex flex-wrap gap-2 justify-content-center">
+      <a class="btn btn-success" href="{{ url_for('income.new') }}">Add income</a>
+      <a class="btn btn-outline-success" href="{{ url_for('expenses.new') }}">Add expense</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('main.profile') }}#demo">Load demo data</a>
+    </div>
+  {% endcall %}
+</div></div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-4">{{ stat_card('Monthly income', snap.income_total|money(0), 'bi-arrow-down-circle', 'positive') }}</div>
+  <div class="col-6 col-xl-4">{{ stat_card('Monthly expenses', snap.expense_total|money(0), 'bi-arrow-up-circle', 'negative') }}</div>
+  <div class="col-6 col-xl-4">{{ stat_card('Remaining balance', snap.balance|money(0), 'bi-wallet2', 'positive' if snap.balance >= 0 else 'negative') }}</div>
+  <div class="col-6 col-xl-4">{{ stat_card('Total savings (goals)', snap.total_saved|money(0), 'bi-piggy-bank', 'info', 'Saved this month: ' ~ (snap.contributions_month|money(0))) }}</div>
+  <div class="col-6 col-xl-4">{{ stat_card('Savings rate', snap.savings_rate|pct(1), 'bi-percent', 'positive' if (snap.savings_rate or 0) >= 20 else 'warning', 'Net savings ÷ income') }}</div>
+  <div class="col-6 col-xl-4">
+    {% if utilization %}
+      {{ stat_card('Budget utilization', utilization.percent|pct(0), 'bi-speedometer2', {'ok':'positive','warn':'warning','over':'negative'}[utilization.level], (utilization.spent|money(0)) ~ ' of ' ~ (utilization.limit|money(0))) }}
+    {% else %}
+      {{ stat_card('Budget utilization', '—', 'bi-speedometer2', 'neutral', 'No budget set for this month') }}
+    {% endif %}
+  </div>
+</div>
+
+{% if alerts %}
+<div class="mb-3">{% for a in alerts %}{{ insight(a) }}{% endfor %}</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Expense breakdown</h2>
+    {% if chart_data.category.values %}<div class="chart-box"><canvas id="categoryChart" role="img" aria-label="Expense category breakdown"></canvas></div>
+    {% else %}<p class="text-muted my-5 text-center">No expenses recorded for {{ snap.label }}.</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Income vs expenses (last 6 months)</h2>
+    <div class="chart-box"><canvas id="incomeExpenseChart" role="img" aria-label="Income versus expenses by month"></canvas></div>
+  </div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="card-title">Spending trend – {{ snap.label }}</h2>
+    <div class="chart-box small"><canvas id="trendChart" role="img" aria-label="Daily spending trend"></canvas></div>
+  </div></div></div>
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h2 class="card-title mb-0">Insights</h2>
+      {% if health.score is not none %}<span class="badge text-bg-{{ 'success' if health.score >= 60 else 'warning' if health.score >= 40 else 'danger' }}">Health {{ health.score }}/100</span>{% endif %}
+    </div>
+    {% for item in insights %}{{ insight(item) }}{% endfor %}
+    <a class="small" href="{{ url_for('advisor.index', year=year, month=month) }}">Open AI advisor →</a>
+  </div></div></div>
+</div>
+
+<div class="card"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="card-title mb-0">Recent transactions</h2>
+    <div class="d-flex gap-2"><a class="btn btn-sm btn-success" href="{{ url_for('income.new') }}">+ Income</a><a class="btn btn-sm btn-outline-success" href="{{ url_for('expenses.new') }}">+ Expense</a></div>
+  </div>
+  {% if recent %}
+  <div class="table-responsive"><table class="table mb-0">
+    <thead><tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Category / source</th><th scope="col">Description</th><th scope="col" class="text-end">Amount</th></tr></thead>
+    <tbody>
+    {% for t in recent %}
+      <tr><td>{{ t.date.strftime('%d %b %Y') }}</td>
+        <td><span class="badge text-bg-{{ 'success' if t.type == 'income' else 'danger' }}">{{ t.type|title }}</span></td>
+        <td>{{ t.label|srclabel if t.type == 'income' else t.label|catlabel }}</td>
+        <td class="text-muted">{{ t.description or '—' }}</td>
+        <td class="text-end {{ 'amount-in' if t.type == 'income' else 'amount-out' }}">{{ '+' if t.type == 'income' else '−' }}{{ t.amount|money }}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}<p class="text-muted text-center my-4">No transactions yet.</p>{% endif %}
+</div></div>
+<script id="chart-data" type="application/json">{{ chart_data|tojson }}</script>
+{% endblock %}

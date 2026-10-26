@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field, progress_bar, stat_card, delete_button %}
+{% block title %}{{ goal.name }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><a class="small text-decoration-none" href="{{ url_for('savings.index') }}">← All goals</a><h1>{{ goal.name }}</h1>
+    {% if goal.description %}<div class="text-muted">{{ goal.description }}</div>{% endif %}</div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('savings.edit', goal_id=goal.id) }}"><i class="bi bi-pencil"></i> Edit</a>
+    <form method="post" action="{{ url_for('savings.delete', goal_id=goal.id) }}" data-confirm="Delete this goal and all its contributions?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i> Delete</button></form>
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">{{ stat_card('Saved', progress.saved|money, 'bi-piggy-bank', 'positive') }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Remaining', progress.remaining|money, 'bi-hourglass-split', 'info') }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Target', goal.target_amount|money, 'bi-flag', 'neutral', 'by ' ~ goal.target_date.strftime('%d %b %Y')) }}</div>
+  <div class="col-6 col-lg-3">{{ stat_card('Needed per month', progress.required_monthly|money(0), 'bi-calendar-check', 'warning') }}</div>
+</div>
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><strong>{{ progress.percent|pct(1) }} complete</strong>
+    <span class="badge text-bg-{{ {'achieved':'success','on_track':'success','behind':'warning','overdue':'danger','not_started':'secondary'}[progress.status] }}">{{ progress.status|replace('_',' ')|title }}</span></div>
+  <div class="my-2">{{ progress_bar(progress.percent, 'ok', 'Goal progress') }}</div>
+  <p class="small text-muted mb-0">
+    {% if progress.status == 'achieved' %}Goal reached - congratulations!
+    {% elif progress.status == 'overdue' %}The target date has passed. Consider extending the date or increasing contributions.
+    {% elif progress.status == 'not_started' %}No contributions yet - start with {{ progress.required_monthly|money(0) }} a month to stay on schedule.
+    {% else %}At your current pace ({{ progress.avg_monthly|money(0) }}/month) you are projected to reach about {{ progress.projected_percent|pct(0) }} of the target by {{ goal.target_date.strftime('%d %b %Y') }}.{% endif %}
+  </p>
+</div></div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card"><div class="card-body">
+    <h2 class="card-title">Add contribution</h2>
+    <form method="post" novalidate>{{ form.hidden_tag() }}{{ render_field(form.amount) }}{{ render_field(form.date) }}{{ render_field(form.note) }}
+      <button class="btn btn-success" type="submit">Record contribution</button></form>
+  </div></div></div>
+  <div class="col-lg-7"><div class="card"><div class="card-body">
+    <h2 class="card-title">Contribution history</h2>
+    {% if goal.contributions %}
+    <div class="table-responsive"><table class="table mb-0"><thead><tr><th scope="col">Date</th><th scope="col">Note</th><th scope="col" class="text-end">Amount</th><th scope="col"></th></tr></thead><tbody>
+      {% for c in goal.contributions %}<tr><td>{{ c.date.strftime('%d %b %Y') }}</td><td class="text-muted">{{ c.note or '—' }}</td><td class="text-end amount-in">{{ c.amount|money }}</td>
+        <td class="text-end">{{ delete_button(url_for('savings.delete_contribution', goal_id=goal.id, contribution_id=c.id), 'Remove this contribution?') }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="text-muted mb-0">No contributions recorded yet.</p>{% endif %}
+  </div></div></div>
+</div>
+{% endblock %}
